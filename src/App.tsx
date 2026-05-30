@@ -632,6 +632,7 @@ function RoleSelection({
 function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: boolean; room: Room; session: Session }) {
   const [assignment, setAssignment] = useState<RoleAssignment | null>(null);
   const [showRole, setShowRole] = useState(false);
+  const [shareView, setShareView] = useState<'team' | 'card' | null>(null);
   const [error, setError] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const { Eye, EyeOff, RotateCcw } = icons;
@@ -705,6 +706,8 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
               Reveal My Role
             </button>
           </>
+        ) : role && shareView ? (
+          <SharePanel role={role} shareView={shareView} onStopSharing={() => setShareView(null)} />
         ) : role ? (
           <>
             <div className="role-card-header">
@@ -720,10 +723,20 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
               <span>{role.category}</span>
               <span>{role.difficulty}</span>
             </div>
-            <button className="secondary-button" onClick={() => setShowRole(false)} type="button">
-              <EyeOff size={18} />
-              Hide Role
-            </button>
+            <div className="share-actions">
+              <button className="secondary-button" onClick={() => setShareView('team')} type="button">
+                <Eye size={18} />
+                Share Team Color
+              </button>
+              <button className="secondary-button" onClick={() => setShareView('card')} type="button">
+                <Eye size={18} />
+                Share Full Card
+              </button>
+              <button className="secondary-button" onClick={() => setShowRole(false)} type="button">
+                <EyeOff size={18} />
+                Hide Role
+              </button>
+            </div>
           </>
         ) : (
           <p className="muted">Assigned role is not in the current catalog.</p>
@@ -732,5 +745,35 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
 
       {error && assignment ? <div className="error-message">{error}</div> : null}
     </section>
+  );
+}
+
+function SharePanel({ onStopSharing, role, shareView }: { onStopSharing: () => void; role: Role; shareView: 'team' | 'card' }) {
+  const isTeamOnly = shareView === 'team';
+
+  return (
+    <div className={`share-panel team-${role.team.toLowerCase()}`}>
+      <p className="eyebrow">{isTeamOnly ? 'Team Color' : 'Full Card'}</p>
+      {isTeamOnly ? (
+        <>
+          <h2>{role.team}</h2>
+          <p className="muted">Team only.</p>
+        </>
+      ) : (
+        <>
+          <span className="role-team">{role.team}</span>
+          <h2>{role.name}</h2>
+          <p>{role.description}</p>
+          <div className="role-meta">
+            <span>Team: {role.team}</span>
+            <span>{role.category}</span>
+            <span>{role.difficulty}</span>
+          </div>
+        </>
+      )}
+      <button className="secondary-button" onClick={onStopSharing} type="button">
+        Stop Sharing
+      </button>
+    </div>
   );
 }

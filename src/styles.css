@@ -359,6 +359,35 @@ input:focus {
   margin-bottom: 0;
 }
 
+.share-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.share-panel {
+  border: 2px solid #ded7cb;
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  min-height: 340px;
+  padding: 28px;
+  place-items: center;
+  text-align: center;
+}
+
+.share-panel h2 {
+  font-size: clamp(3rem, 12vw, 6.5rem);
+  line-height: 0.95;
+}
+
+.share-panel p {
+  color: #52605a;
+  line-height: 1.5;
+  margin-bottom: 0;
+  max-width: 460px;
+}
+
 .role-card-header {
   align-items: start;
   display: flex;
@@ -459,6 +488,10 @@ input:focus {
 
   .deck-summary-grid,
   .role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .share-actions {
     grid-template-columns: 1fr;
   }
 }
