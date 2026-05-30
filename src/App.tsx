@@ -1,13 +1,18 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { clearSession, createRoom, getPlayers, getRoom, joinRoom, leaveRoom, loadSession, maxPlayers, saveSession, validateName } from './roomService';
+import { clearSession, createRoom, getPlayers, getRoom, joinRoom, leaveRoom, loadSession, maxPlayers, saveSession, updateSelectedRoleIds, validateName } from './roomService';
+import { getDeckStatus, getPairedRoleId, getRoleCounts, getRoleQuantity, pairedRoleIds, roleCatalog, rolesById } from './roles';
 import { isSupabaseConfigured, supabase } from './supabase';
-import type { Player, Room, Session } from './types';
+import type { Player, Role, RoleId, Room, Session, Team } from './types';
 
 type Icons = {
+  ArrowLeft: LucideIcon;
   Crown: LucideIcon;
   LogIn: LucideIcon;
+  Minus: LucideIcon;
   Plus: LucideIcon;
+  Save: LucideIcon;
+  Settings: LucideIcon;
   Users: LucideIcon;
 };
 
@@ -111,7 +116,7 @@ function Home({ icons, onSession }: { icons: Icons; onSession: (session: Session
       <div className="intro">
         <p className="eyebrow">Two Rooms Companion</p>
         <h1>Create or join a lobby</h1>
-        <p className="muted">Phase 1 manages rooms and live player lists only.</p>
+        <p className="muted">Create a room, invite players, and build the role deck together.</p>
       </div>
 
       <div className="form-grid">
@@ -172,9 +177,10 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
   const [room, setRoom] = useState<Room | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [onlinePlayerIds, setOnlinePlayerIds] = useState<Set<string>>(new Set());
+  const [screen, setScreen] = useState<'lobby' | 'roles'>('lobby');
   const [error, setError] = useState('');
   const [isLeaving, setIsLeaving] = useState(false);
-  const { Crown, Users } = icons;
+  const { Crown, Settings, Users } = icons;
 
   const connectedPlayers = useMemo(() => {
     if (onlinePlayerIds.size === 0) {
@@ -188,6 +194,9 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
     [players, session.playerId],
   );
   const isHost = Boolean(currentPlayer?.isHost);
+  const selectedRoleIds = room?.selectedRoleIds ?? [];
+  const teamCounts = useMemo(() => getRoleCounts(selectedRoleIds), [selectedRoleIds]);
+  const deckStatus = getDeckStatus(selectedRoleIds.length, connectedPlayers.length);
 
   useEffect(() => {
     let active = true;
@@ -296,6 +305,18 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
     );
   }
 
+  if (screen === 'roles') {
+    return (
+      <RoleSelection
+        connectedPlayerCount={connectedPlayers.length}
+        icons={icons}
+        isHost={isHost}
+        onBack={() => setScreen('lobby')}
+        room={room}
+      />
+    );
+  }
+
   return (
     <section className="lobby">
       <div className="lobby-header">
@@ -303,9 +324,24 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
           <p className="eyebrow">Room</p>
           <h1>{room.roomCode}</h1>
         </div>
-        <button className="secondary-button" disabled={isLeaving} onClick={handleLeave} type="button">
-          {isHost ? 'Close Room' : 'Leave Room'}
-        </button>
+        <div className="header-actions">
+          <button className="secondary-button" onClick={() => setScreen('roles')} type="button">
+            <Settings size={18} />
+            Role Selection
+          </button>
+          <button className="secondary-button" disabled={isLeaving} onClick={handleLeave} type="button">
+            {isHost ? 'Close Room' : 'Leave Room'}
+          </button>
+        </div>
+      </div>
+
+      <div className="deck-summary-grid">
+        <SummaryTile label="Players" value={connectedPlayers.length.toString()} />
+        <SummaryTile label="Selected Cards" value={selectedRoleIds.length.toString()} />
+        <SummaryTile label="Blue" value={teamCounts.Blue.toString()} team="Blue" />
+        <SummaryTile label="Red" value={teamCounts.Red.toString()} team="Red" />
+        <SummaryTile label="Grey" value={teamCounts.Grey.toString()} team="Grey" />
+        <SummaryTile label="Deck Status" value={deckStatus} tone={deckStatus === 'Ready' ? 'ready' : 'warning'} />
       </div>
 
       <div className="panel player-panel">
@@ -330,6 +366,165 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
             </li>
           ))}
         </ol>
+      </div>
+
+      {error ? <div className="error-message">{error}</div> : null}
+    </section>
+  );
+}
+
+function SummaryTile({ label, value, team, tone }: { label: string; value: string; team?: Team; tone?: 'ready' | 'warning' }) {
+  return (
+    <div className={`summary-tile ${team ? `team-${team.toLowerCase()}` : ''} ${tone ? `summary-${tone}` : ''}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function RoleSelection({
+  connectedPlayerCount,
+  icons,
+  isHost,
+  onBack,
+  room,
+}: {
+  connectedPlayerCount: number;
+  icons: Icons;
+  isHost: boolean;
+  onBack: () => void;
+  room: Room;
+}) {
+  const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const { ArrowLeft, Minus, Plus, Save } = icons;
+  const selectedRoleIds = room.selectedRoleIds;
+  const teamCounts = getRoleCounts(selectedRoleIds);
+  const deckStatus = getDeckStatus(selectedRoleIds.length, connectedPlayerCount);
+
+  const persistDeck = async (nextSelectedRoleIds: RoleId[]) => {
+    setError('');
+    setIsSaving(true);
+    try {
+      await updateSelectedRoleIds(room.id, nextSelectedRoleIds);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not update deck');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addRole = async (role: Role) => {
+    if (!isHost) {
+      return;
+    }
+
+    if (pairedRoleIds.has(role.id)) {
+      const pairedRoleId = getPairedRoleId(role);
+      if (!pairedRoleId) {
+        return;
+      }
+
+      const withoutPair = selectedRoleIds.filter((roleId) => roleId !== role.id && roleId !== pairedRoleId);
+      await persistDeck([...withoutPair, role.id, pairedRoleId]);
+      return;
+    }
+
+    if (role.id === 'gambler' && selectedRoleIds.includes(role.id)) {
+      return;
+    }
+
+    await persistDeck([...selectedRoleIds, role.id]);
+  };
+
+  const removeRole = async (role: Role) => {
+    if (!isHost) {
+      return;
+    }
+
+    if (pairedRoleIds.has(role.id)) {
+      const pairedRoleId = getPairedRoleId(role);
+      if (!pairedRoleId) {
+        return;
+      }
+
+      await persistDeck(selectedRoleIds.filter((roleId) => roleId !== role.id && roleId !== pairedRoleId));
+      return;
+    }
+
+    const indexToRemove = selectedRoleIds.lastIndexOf(role.id);
+    if (indexToRemove === -1) {
+      return;
+    }
+
+    await persistDeck(selectedRoleIds.filter((_, index) => index !== indexToRemove));
+  };
+
+  return (
+    <section className="role-selection">
+      <div className="lobby-header">
+        <div>
+          <p className="eyebrow">Role Selection</p>
+          <h1>{room.roomCode}</h1>
+        </div>
+        <div className="header-actions">
+          <button className="secondary-button" onClick={onBack} type="button">
+            <ArrowLeft size={18} />
+            Return To Lobby
+          </button>
+          <button className="primary-outline-button" onClick={onBack} type="button">
+            <Save size={18} />
+            Save Deck
+          </button>
+        </div>
+      </div>
+
+      <div className="deck-summary-grid">
+        <SummaryTile label="Players" value={connectedPlayerCount.toString()} />
+        <SummaryTile label="Selected Cards" value={selectedRoleIds.length.toString()} />
+        <SummaryTile label="Blue" value={teamCounts.Blue.toString()} team="Blue" />
+        <SummaryTile label="Red" value={teamCounts.Red.toString()} team="Red" />
+        <SummaryTile label="Grey" value={teamCounts.Grey.toString()} team="Grey" />
+        <SummaryTile label="Deck Status" value={deckStatus} tone={deckStatus === 'Ready' ? 'ready' : 'warning'} />
+      </div>
+
+      {!isHost ? <p className="viewer-note">Only the host can modify the deck. Updates appear here in real time.</p> : null}
+
+      <div className="role-grid">
+        {roleCatalog.map((role) => {
+          const quantity = getRoleQuantity(selectedRoleIds, role.id);
+          const pairedRoleId = getPairedRoleId(role);
+          const pairedRole = pairedRoleId ? rolesById.get(pairedRoleId) : null;
+          const isPairSelected = pairedRoleId ? selectedRoleIds.includes(role.id) && selectedRoleIds.includes(pairedRoleId) : false;
+          const canAdd = isHost && !isSaving && (!pairedRoleIds.has(role.id) || !isPairSelected) && (role.id !== 'gambler' || quantity === 0);
+          const canRemove = isHost && !isSaving && quantity > 0;
+
+          return (
+            <article className={`role-card team-${role.team.toLowerCase()}`} key={role.id}>
+              <div className="role-card-header">
+                <div>
+                  <span className="role-team">{role.team}</span>
+                  <h2>{role.name}</h2>
+                </div>
+                <span className="role-quantity">{quantity}</span>
+              </div>
+              <p>{role.description}</p>
+              <div className="role-meta">
+                <span>{role.category}</span>
+                <span>{role.difficulty}</span>
+              </div>
+              {pairedRole ? <p className="pair-note">Pairs with {pairedRole.name}</p> : null}
+              <div className="role-actions">
+                <button className="icon-button" disabled={!canRemove} onClick={() => void removeRole(role)} title={`Remove ${role.name}`} type="button">
+                  <Minus size={18} />
+                </button>
+                <button className="icon-button" disabled={!canAdd} onClick={() => void addRole(role)} title={`Add ${role.name}`} type="button">
+                  <Plus size={18} />
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       {error ? <div className="error-message">{error}</div> : null}

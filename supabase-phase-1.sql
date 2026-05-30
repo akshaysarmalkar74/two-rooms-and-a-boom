@@ -5,8 +5,12 @@ create table if not exists public.rooms (
   room_code text not null unique,
   created_at timestamptz not null default now(),
   host_player_id uuid null,
-  status text not null default 'LOBBY' check (status in ('LOBBY', 'ROLE_SELECTION', 'IN_GAME', 'FINISHED'))
+  status text not null default 'LOBBY' check (status in ('LOBBY', 'ROLE_SELECTION', 'IN_GAME', 'FINISHED')),
+  selected_role_ids text[] not null default '{}'
 );
+
+alter table public.rooms
+  add column if not exists selected_role_ids text[] not null default '{}';
 
 create table if not exists public.players (
   id uuid primary key default gen_random_uuid(),

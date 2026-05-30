@@ -176,12 +176,26 @@ input:focus {
   padding-top: 48px;
 }
 
+.role-selection {
+  margin: 0 auto;
+  max-width: 1120px;
+  padding-top: 48px;
+  width: 100%;
+}
+
 .lobby-header {
   align-items: end;
   display: flex;
   gap: 20px;
   justify-content: space-between;
   margin-bottom: 24px;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .lobby-header h1 {
@@ -199,6 +213,65 @@ input:focus {
 
 .secondary-button:hover:not(:disabled) {
   background: #ebe4d8;
+}
+
+.primary-outline-button {
+  background: #20362e;
+}
+
+.primary-outline-button:hover:not(:disabled) {
+  background: #172820;
+}
+
+.deck-summary-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-bottom: 20px;
+}
+
+.summary-tile {
+  background: #fffdfa;
+  border: 1px solid #ded7cb;
+  border-radius: 8px;
+  min-height: 82px;
+  padding: 14px;
+}
+
+.summary-tile span {
+  color: #637069;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.summary-tile strong {
+  color: #17201b;
+  display: block;
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.team-blue {
+  border-color: #9db9dd;
+}
+
+.team-red {
+  border-color: #e4a7a0;
+}
+
+.team-grey {
+  border-color: #b8bdc2;
+}
+
+.summary-ready {
+  border-color: #6fbd91;
+}
+
+.summary-warning {
+  border-color: #e0b957;
 }
 
 .player-panel {
@@ -249,6 +322,100 @@ input:focus {
   padding: 0.35rem 0.55rem;
 }
 
+.viewer-note {
+  color: #5f6862;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+
+.role-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.role-card {
+  background: #fffdfa;
+  border: 1px solid #ded7cb;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  min-height: 248px;
+  padding: 18px;
+}
+
+.role-card-header {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.role-card h2 {
+  font-size: 1.2rem;
+  margin: 4px 0 0;
+}
+
+.role-card p {
+  color: #52605a;
+  line-height: 1.45;
+  margin-bottom: 0;
+}
+
+.role-team {
+  color: #80622f;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.role-quantity {
+  align-items: center;
+  background: #20362e;
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  min-width: 34px;
+  padding: 0 8px;
+}
+
+.role-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.role-meta span,
+.pair-note {
+  background: #f2ede4;
+  border-radius: 999px;
+  color: #51473a;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.35rem 0.55rem;
+}
+
+.pair-note {
+  justify-self: start;
+}
+
+.role-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.icon-button {
+  flex: 1;
+  min-height: 42px;
+  padding: 0.65rem;
+}
+
 @media (max-width: 720px) {
   .app-shell {
     padding: 20px;
@@ -267,7 +434,23 @@ input:focus {
     flex-direction: column;
   }
 
+  .header-actions {
+    justify-content: stretch;
+  }
+
   .secondary-button {
     width: 100%;
+  }
+
+  .deck-summary-grid,
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 980px) {
+  .deck-summary-grid,
+  .role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

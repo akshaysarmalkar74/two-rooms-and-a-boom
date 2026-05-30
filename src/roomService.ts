@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Player, Room, Session } from './types';
+import type { Player, RoleId, Room, Session } from './types';
 
 const MAX_PLAYERS = 20;
 const ROOM_CODE_LENGTH = 4;
@@ -11,6 +11,7 @@ type RoomRow = {
   created_at: string;
   host_player_id: string | null;
   status: Room['status'];
+  selected_role_ids: RoleId[] | null;
 };
 
 type PlayerRow = {
@@ -35,6 +36,7 @@ const toRoom = (row: RoomRow): Room => ({
   createdAt: row.created_at,
   hostPlayerId: row.host_player_id,
   status: row.status,
+  selectedRoleIds: row.selected_role_ids ?? [],
 });
 
 const toPlayer = (row: PlayerRow): Player => ({
@@ -97,7 +99,7 @@ export const createRoom = async (name: string): Promise<Session> => {
     const { data: room, error: roomError } = await client
       .from('rooms')
       .insert({ room_code: roomCode, status: 'LOBBY' })
-      .select('id, room_code, created_at, host_player_id, status')
+      .select('id, room_code, created_at, host_player_id, status, selected_role_ids')
       .single<RoomRow>();
 
     if (roomError) {
@@ -146,7 +148,7 @@ export const joinRoom = async (name: string, roomCodeInput: string): Promise<Ses
 
   const { data: roomRow, error: roomError } = await client
     .from('rooms')
-    .select('id, room_code, created_at, host_player_id, status')
+    .select('id, room_code, created_at, host_player_id, status, selected_role_ids')
     .eq('room_code', roomCode)
     .maybeSingle<RoomRow>();
 
@@ -185,7 +187,7 @@ export const getRoom = async (roomId: string): Promise<Room | null> => {
   const client = requireClient();
   const { data, error } = await client
     .from('rooms')
-    .select('id, room_code, created_at, host_player_id, status')
+    .select('id, room_code, created_at, host_player_id, status, selected_role_ids')
     .eq('id', roomId)
     .maybeSingle<RoomRow>();
 
@@ -220,6 +222,19 @@ export const leaveRoom = async (session: Session, isHost: boolean) => {
   }
 
   await client.from('players').delete().eq('id', session.playerId);
+};
+
+export const updateSelectedRoleIds = async (roomId: string, selectedRoleIds: RoleId[]) => {
+  const client = requireClient();
+  const { error } = await client
+    .from('rooms')
+    .update({ selected_role_ids: selectedRoleIds })
+    .eq('id', roomId)
+    .eq('status', 'LOBBY');
+
+  if (error) {
+    throw new Error(error.message);
+  }
 };
 
 export const maxPlayers = MAX_PLAYERS;
