@@ -325,7 +325,7 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
     setIsStarting(true);
     setError('');
     try {
-      await startGame(room.id, currentPlayer.id);
+      await startGame(session);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not start game');
     } finally {
@@ -537,7 +537,7 @@ function RoleSelection({
     setIsStarting(true);
     setError('');
     try {
-      await startGame(room.id, session.playerId);
+      await startGame(session);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not start game');
     } finally {
@@ -642,7 +642,7 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
 
     const loadAssignment = async () => {
       try {
-        const nextAssignment = await getMyAssignment(room.id, session.playerId);
+        const nextAssignment = await getMyAssignment(session);
         if (active) {
           setAssignment(nextAssignment);
           setError(nextAssignment ? '' : 'No role assignment found for this player');
@@ -669,7 +669,7 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
     setIsResetting(true);
     setError('');
     try {
-      await resetGame(room.id, session.playerId);
+      await resetGame(session);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not reset game');
     } finally {

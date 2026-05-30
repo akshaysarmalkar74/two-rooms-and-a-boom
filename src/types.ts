@@ -46,6 +46,7 @@ export type Session = {
   roomId: string;
   roomCode: string;
   playerId: string;
+  accessToken: string;
 };
 
 export type RoleAssignment = {

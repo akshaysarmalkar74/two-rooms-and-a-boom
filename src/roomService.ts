@@ -75,7 +75,13 @@ export const loadSession = (): Session | null => {
   }
 
   try {
-    return JSON.parse(raw) as Session;
+    const session = JSON.parse(raw) as Partial<Session>;
+    if (!session.roomId || !session.roomCode || !session.playerId || !session.accessToken) {
+      localStorage.removeItem(sessionKey);
+      return null;
+    }
+
+    return session as Session;
   } catch {
     localStorage.removeItem(sessionKey);
     return null;
@@ -85,6 +91,8 @@ export const loadSession = (): Session | null => {
 export const clearSession = () => {
   localStorage.removeItem(sessionKey);
 };
+
+const createAccessToken = () => crypto.randomUUID();
 
 export const createRoom = async (name: string): Promise<Session> => {
   const client = requireClient();
@@ -110,9 +118,10 @@ export const createRoom = async (name: string): Promise<Session> => {
       throw new Error(roomError.message);
     }
 
+    const accessToken = createAccessToken();
     const { data: player, error: playerError } = await client
       .from('players')
-      .insert({ room_id: room.id, name: playerName, is_host: true })
+      .insert({ access_token: accessToken, room_id: room.id, name: playerName, is_host: true })
       .select('id, room_id, name, is_host, joined_at')
       .single<PlayerRow>();
 
@@ -131,7 +140,7 @@ export const createRoom = async (name: string): Promise<Session> => {
       throw new Error(updateError.message);
     }
 
-    return { roomId: room.id, roomCode: room.room_code, playerId: player.id };
+    return { accessToken, roomId: room.id, roomCode: room.room_code, playerId: player.id };
   }
 
   throw new Error('Could not generate a room code. Try again.');
@@ -170,9 +179,10 @@ export const joinRoom = async (name: string, roomCodeInput: string): Promise<Ses
     throw new Error('Room is full');
   }
 
+  const accessToken = createAccessToken();
   const { data: player, error: playerError } = await client
     .from('players')
-    .insert({ room_id: room.id, name: playerName, is_host: false })
+    .insert({ access_token: accessToken, room_id: room.id, name: playerName, is_host: false })
     .select('id, room_id, name, is_host, joined_at')
     .single<PlayerRow>();
 
@@ -180,7 +190,7 @@ export const joinRoom = async (name: string, roomCodeInput: string): Promise<Ses
     throw new Error(playerError.message);
   }
 
-  return { roomId: room.id, roomCode: room.roomCode, playerId: player.id };
+  return { accessToken, roomId: room.id, roomCode: room.roomCode, playerId: player.id };
 };
 
 export const getRoom = async (roomId: string): Promise<Room | null> => {
@@ -246,11 +256,12 @@ export const updateRoomStatus = async (roomId: string, status: RoomStatus) => {
   }
 };
 
-export const startGame = async (roomId: string, hostPlayerId: string) => {
+export const startGame = async (session: Session) => {
   const client = requireClient();
   const { error } = await client.rpc('start_game', {
-    p_host_player_id: hostPlayerId,
-    p_room_id: roomId,
+    p_access_token: session.accessToken,
+    p_host_player_id: session.playerId,
+    p_room_id: session.roomId,
   });
 
   if (error) {
@@ -258,11 +269,12 @@ export const startGame = async (roomId: string, hostPlayerId: string) => {
   }
 };
 
-export const resetGame = async (roomId: string, hostPlayerId: string) => {
+export const resetGame = async (session: Session) => {
   const client = requireClient();
   const { error } = await client.rpc('reset_game', {
-    p_host_player_id: hostPlayerId,
-    p_room_id: roomId,
+    p_access_token: session.accessToken,
+    p_host_player_id: session.playerId,
+    p_room_id: session.roomId,
   });
 
   if (error) {
@@ -270,11 +282,12 @@ export const resetGame = async (roomId: string, hostPlayerId: string) => {
   }
 };
 
-export const getMyAssignment = async (roomId: string, playerId: string): Promise<RoleAssignment | null> => {
+export const getMyAssignment = async (session: Session): Promise<RoleAssignment | null> => {
   const client = requireClient();
   const { data, error } = await client.rpc('get_my_assignment', {
-    p_player_id: playerId,
-    p_room_id: roomId,
+    p_access_token: session.accessToken,
+    p_player_id: session.playerId,
+    p_room_id: session.roomId,
   });
 
   if (error) {

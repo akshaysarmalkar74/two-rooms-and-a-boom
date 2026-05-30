@@ -24,8 +24,12 @@ create table if not exists public.players (
   room_id uuid not null references public.rooms(id) on delete cascade,
   name text not null,
   is_host boolean not null default false,
+  access_token text not null default encode(gen_random_bytes(32), 'hex'),
   joined_at timestamptz not null default now()
 );
+
+alter table public.players
+  add column if not exists access_token text not null default encode(gen_random_bytes(32), 'hex');
 
 create table if not exists public.role_assignments (
   player_id uuid primary key references public.players(id) on delete cascade,
@@ -90,7 +94,13 @@ create policy "Phase 1 players are public lobby data"
   using (true)
   with check (true);
 
-create or replace function public.start_game(p_room_id uuid, p_host_player_id uuid)
+revoke select (access_token) on public.players from anon, authenticated;
+
+drop function if exists public.start_game(uuid, uuid);
+drop function if exists public.reset_game(uuid, uuid);
+drop function if exists public.get_my_assignment(uuid, uuid);
+
+create or replace function public.start_game(p_room_id uuid, p_host_player_id uuid, p_access_token text)
 returns void
 language plpgsql
 security definer
@@ -112,6 +122,17 @@ begin
   end if;
 
   if v_room.host_player_id is distinct from p_host_player_id then
+    raise exception 'Only the host can start the game';
+  end if;
+
+  if not exists (
+    select 1
+    from public.players
+    where id = p_host_player_id
+      and room_id = p_room_id
+      and is_host = true
+      and access_token = p_access_token
+  ) then
     raise exception 'Only the host can start the game';
   end if;
 
@@ -157,7 +178,7 @@ begin
 end;
 $$;
 
-create or replace function public.reset_game(p_room_id uuid, p_host_player_id uuid)
+create or replace function public.reset_game(p_room_id uuid, p_host_player_id uuid, p_access_token text)
 returns void
 language plpgsql
 security definer
@@ -180,6 +201,17 @@ begin
     raise exception 'Only the host can reset the game';
   end if;
 
+  if not exists (
+    select 1
+    from public.players
+    where id = p_host_player_id
+      and room_id = p_room_id
+      and is_host = true
+      and access_token = p_access_token
+  ) then
+    raise exception 'Only the host can reset the game';
+  end if;
+
   delete from public.role_assignments
   where room_id = p_room_id;
 
@@ -189,7 +221,7 @@ begin
 end;
 $$;
 
-create or replace function public.get_my_assignment(p_room_id uuid, p_player_id uuid)
+create or replace function public.get_my_assignment(p_room_id uuid, p_player_id uuid, p_access_token text)
 returns table (
   player_id uuid,
   role_id text,
@@ -201,11 +233,14 @@ set search_path = public
 as $$
   select role_assignments.player_id, role_assignments.role_id, role_assignments.assigned_at
   from public.role_assignments
+  inner join public.players
+    on players.id = role_assignments.player_id
   where role_assignments.room_id = p_room_id
     and role_assignments.player_id = p_player_id
+    and players.access_token = p_access_token
   limit 1;
 $$;
 
-grant execute on function public.start_game(uuid, uuid) to anon;
-grant execute on function public.reset_game(uuid, uuid) to anon;
-grant execute on function public.get_my_assignment(uuid, uuid) to anon;
+grant execute on function public.start_game(uuid, uuid, text) to anon;
+grant execute on function public.reset_game(uuid, uuid, text) to anon;
+grant execute on function public.get_my_assignment(uuid, uuid, text) to anon;
