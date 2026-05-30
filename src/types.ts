@@ -1,4 +1,4 @@
-export type RoomStatus = 'LOBBY' | 'ROLE_SELECTION' | 'IN_GAME' | 'FINISHED';
+export type RoomStatus = 'LOBBY' | 'ROLE_SELECTION' | 'ROLE_ASSIGNED';
 export type Team = 'Blue' | 'Red' | 'Grey';
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Expert';
 export type RoleCategory = 'Core' | 'Support' | 'Spy' | 'Traitor' | 'Civilian' | 'Independent';
@@ -46,4 +46,10 @@ export type Session = {
   roomId: string;
   roomCode: string;
   playerId: string;
+};
+
+export type RoleAssignment = {
+  playerId: string;
+  roleId: RoleId;
+  assignedAt: string;
 };

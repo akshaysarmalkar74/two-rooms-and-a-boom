@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Player, RoleId, Room, Session } from './types';
+import type { Player, RoleAssignment, RoleId, Room, RoomStatus, Session } from './types';
 
 const MAX_PLAYERS = 20;
 const ROOM_CODE_LENGTH = 4;
@@ -230,11 +230,67 @@ export const updateSelectedRoleIds = async (roomId: string, selectedRoleIds: Rol
     .from('rooms')
     .update({ selected_role_ids: selectedRoleIds })
     .eq('id', roomId)
-    .eq('status', 'LOBBY');
+    .in('status', ['LOBBY', 'ROLE_SELECTION']);
 
   if (error) {
     throw new Error(error.message);
   }
+};
+
+export const updateRoomStatus = async (roomId: string, status: RoomStatus) => {
+  const client = requireClient();
+  const { error } = await client.from('rooms').update({ status }).eq('id', roomId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const startGame = async (roomId: string, hostPlayerId: string) => {
+  const client = requireClient();
+  const { error } = await client.rpc('start_game', {
+    p_host_player_id: hostPlayerId,
+    p_room_id: roomId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const resetGame = async (roomId: string, hostPlayerId: string) => {
+  const client = requireClient();
+  const { error } = await client.rpc('reset_game', {
+    p_host_player_id: hostPlayerId,
+    p_room_id: roomId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const getMyAssignment = async (roomId: string, playerId: string): Promise<RoleAssignment | null> => {
+  const client = requireClient();
+  const { data, error } = await client.rpc('get_my_assignment', {
+    p_player_id: playerId,
+    p_room_id: roomId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const assignment = Array.isArray(data) ? data[0] : null;
+  if (!assignment) {
+    return null;
+  }
+
+  return {
+    playerId: assignment.player_id,
+    roleId: assignment.role_id as RoleId,
+    assignedAt: assignment.assigned_at,
+  };
 };
 
 export const maxPlayers = MAX_PLAYERS;

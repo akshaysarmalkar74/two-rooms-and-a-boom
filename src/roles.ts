@@ -139,3 +139,49 @@ export const getDeckStatus = (selectedCount: number, playerCount: number) => {
 
   return 'Too Many Cards';
 };
+
+const shuffle = <Value,>(values: Value[]) => {
+  const copy = [...values];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+
+  return copy;
+};
+
+export const generateRandomDeck = (playerCount: number): RoleId[] => {
+  if (playerCount < 2) {
+    return [];
+  }
+
+  const deck: RoleId[] = ['president', 'bomber'];
+  const optionalPairs: RoleId[][] = shuffle([
+    ['blue-spy', 'red-spy'],
+    ['blue-traitor', 'red-traitor'],
+    ['igniter', 'remote-detonator'],
+  ]);
+
+  for (const pair of optionalPairs) {
+    if (deck.length + pair.length <= playerCount && Math.random() > 0.35) {
+      deck.push(...pair);
+    }
+  }
+
+  const fillerRoles: RoleId[] = ['blue-civilian', 'red-civilian'];
+  const shouldIncludeGambler = playerCount - deck.length > 0 && Math.random() > 0.5;
+
+  if (shouldIncludeGambler) {
+    deck.push('gambler');
+  }
+
+  while (deck.length < playerCount) {
+    const blueCount = getRoleCounts(deck).Blue;
+    const redCount = getRoleCounts(deck).Red;
+    const nextCivilian = blueCount <= redCount ? 'blue-civilian' : 'red-civilian';
+    const alternateCivilian = fillerRoles[Math.floor(Math.random() * fillerRoles.length)];
+    deck.push(Math.random() > 0.25 ? nextCivilian : alternateCivilian);
+  }
+
+  return shuffle(deck);
+};

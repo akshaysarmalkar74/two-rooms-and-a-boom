@@ -1,18 +1,23 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { clearSession, createRoom, getPlayers, getRoom, joinRoom, leaveRoom, loadSession, maxPlayers, saveSession, updateSelectedRoleIds, validateName } from './roomService';
-import { getDeckStatus, getPairedRoleId, getRoleCounts, getRoleQuantity, pairedRoleIds, roleCatalog, rolesById } from './roles';
+import { clearSession, createRoom, getMyAssignment, getPlayers, getRoom, joinRoom, leaveRoom, loadSession, maxPlayers, resetGame, saveSession, startGame, updateRoomStatus, updateSelectedRoleIds, validateName } from './roomService';
+import { generateRandomDeck, getDeckStatus, getPairedRoleId, getRoleCounts, getRoleQuantity, pairedRoleIds, roleCatalog, rolesById } from './roles';
 import { isSupabaseConfigured, supabase } from './supabase';
-import type { Player, Role, RoleId, Room, Session, Team } from './types';
+import type { Player, Role, RoleAssignment, RoleId, Room, Session, Team } from './types';
 
 type Icons = {
   ArrowLeft: LucideIcon;
   Crown: LucideIcon;
+  Eye: LucideIcon;
+  EyeOff: LucideIcon;
   LogIn: LucideIcon;
   Minus: LucideIcon;
+  Play: LucideIcon;
   Plus: LucideIcon;
+  RotateCcw: LucideIcon;
   Save: LucideIcon;
   Settings: LucideIcon;
+  Shuffle: LucideIcon;
   Users: LucideIcon;
 };
 
@@ -179,8 +184,9 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
   const [onlinePlayerIds, setOnlinePlayerIds] = useState<Set<string>>(new Set());
   const [screen, setScreen] = useState<'lobby' | 'roles'>('lobby');
   const [error, setError] = useState('');
+  const [isStarting, setIsStarting] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
-  const { Crown, Settings, Users } = icons;
+  const { Crown, Play, Settings, Users } = icons;
 
   const connectedPlayers = useMemo(() => {
     if (onlinePlayerIds.size === 0) {
@@ -265,23 +271,6 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
     };
   }, [onExit, session.playerId, session.roomId]);
 
-  useEffect(() => {
-    if (!currentPlayer) {
-      return;
-    }
-
-    const handleBeforeUnload = () => {
-      if (currentPlayer.isHost) {
-        void supabase!.from('rooms').delete().eq('id', session.roomId);
-      } else {
-        void supabase!.from('players').delete().eq('id', session.playerId);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [currentPlayer, session.playerId, session.roomId]);
-
   const handleLeave = async () => {
     if (!currentPlayer) {
       onExit();
@@ -297,6 +286,53 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
     }
   };
 
+  const openRoleSelection = async () => {
+    if (room && isHost) {
+      try {
+        await updateRoomStatus(room.id, 'ROLE_SELECTION');
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Could not open role selection');
+        return;
+      }
+    }
+
+    setScreen('roles');
+  };
+
+  const returnToLobby = async () => {
+    if (room && isHost && room.status === 'ROLE_SELECTION') {
+      try {
+        await updateRoomStatus(room.id, 'LOBBY');
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Could not return to lobby');
+        return;
+      }
+    }
+
+    setScreen('lobby');
+  };
+
+  const handleStartGame = async () => {
+    if (!room || !currentPlayer?.isHost) {
+      return;
+    }
+
+    if (deckStatus !== 'Ready') {
+      setError('Selected cards count must match player count');
+      return;
+    }
+
+    setIsStarting(true);
+    setError('');
+    try {
+      await startGame(room.id, currentPlayer.id);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not start game');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   if (!room) {
     return (
       <section className="panel narrow-panel">
@@ -305,14 +341,19 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
     );
   }
 
-  if (screen === 'roles') {
+  if (room.status === 'ROLE_ASSIGNED') {
+    return <MyRoleScreen icons={icons} isHost={isHost} room={room} session={session} />;
+  }
+
+  if (room.status === 'ROLE_SELECTION' || screen === 'roles') {
     return (
       <RoleSelection
         connectedPlayerCount={connectedPlayers.length}
         icons={icons}
         isHost={isHost}
-        onBack={() => setScreen('lobby')}
+        onBack={() => void returnToLobby()}
         room={room}
+        session={session}
       />
     );
   }
@@ -325,10 +366,16 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
           <h1>{room.roomCode}</h1>
         </div>
         <div className="header-actions">
-          <button className="secondary-button" onClick={() => setScreen('roles')} type="button">
+          <button className="secondary-button" onClick={() => void openRoleSelection()} type="button">
             <Settings size={18} />
             Role Selection
           </button>
+          {isHost ? (
+            <button className="primary-outline-button" disabled={isStarting || deckStatus !== 'Ready'} onClick={() => void handleStartGame()} type="button">
+              <Play size={18} />
+              {isStarting ? 'Starting...' : 'Start Game'}
+            </button>
+          ) : null}
           <button className="secondary-button" disabled={isLeaving} onClick={handleLeave} type="button">
             {isHost ? 'Close Room' : 'Leave Room'}
           </button>
@@ -388,16 +435,19 @@ function RoleSelection({
   isHost,
   onBack,
   room,
+  session,
 }: {
   connectedPlayerCount: number;
   icons: Icons;
   isHost: boolean;
   onBack: () => void;
   room: Room;
+  session: Session;
 }) {
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const { ArrowLeft, Minus, Plus, Save } = icons;
+  const [isStarting, setIsStarting] = useState(false);
+  const { ArrowLeft, Minus, Play, Plus, Save, Shuffle } = icons;
   const selectedRoleIds = room.selectedRoleIds;
   const teamCounts = getRoleCounts(selectedRoleIds);
   const deckStatus = getDeckStatus(selectedRoleIds.length, connectedPlayerCount);
@@ -460,6 +510,41 @@ function RoleSelection({
     await persistDeck(selectedRoleIds.filter((_, index) => index !== indexToRemove));
   };
 
+  const handleGenerateRandomDeck = async () => {
+    if (!isHost) {
+      return;
+    }
+
+    const nextDeck = generateRandomDeck(connectedPlayerCount);
+    if (nextDeck.length === 0) {
+      setError('At least 2 players are required for a random deck');
+      return;
+    }
+
+    await persistDeck(nextDeck);
+  };
+
+  const handleStartGame = async () => {
+    if (!isHost) {
+      return;
+    }
+
+    if (deckStatus !== 'Ready') {
+      setError('Selected cards count must match player count');
+      return;
+    }
+
+    setIsStarting(true);
+    setError('');
+    try {
+      await startGame(room.id, session.playerId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not start game');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   return (
     <section className="role-selection">
       <div className="lobby-header">
@@ -472,6 +557,18 @@ function RoleSelection({
             <ArrowLeft size={18} />
             Return To Lobby
           </button>
+          {isHost ? (
+            <button className="secondary-button" disabled={isSaving || connectedPlayerCount < 2} onClick={() => void handleGenerateRandomDeck()} type="button">
+              <Shuffle size={18} />
+              Generate Random Deck
+            </button>
+          ) : null}
+          {isHost ? (
+            <button className="primary-outline-button" disabled={isStarting || deckStatus !== 'Ready'} onClick={() => void handleStartGame()} type="button">
+              <Play size={18} />
+              {isStarting ? 'Starting...' : 'Start Game'}
+            </button>
+          ) : null}
           <button className="primary-outline-button" onClick={onBack} type="button">
             <Save size={18} />
             Save Deck
@@ -528,6 +625,112 @@ function RoleSelection({
       </div>
 
       {error ? <div className="error-message">{error}</div> : null}
+    </section>
+  );
+}
+
+function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: boolean; room: Room; session: Session }) {
+  const [assignment, setAssignment] = useState<RoleAssignment | null>(null);
+  const [showRole, setShowRole] = useState(false);
+  const [error, setError] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const { Eye, EyeOff, RotateCcw } = icons;
+  const role = assignment ? rolesById.get(assignment.roleId) : null;
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAssignment = async () => {
+      try {
+        const nextAssignment = await getMyAssignment(room.id, session.playerId);
+        if (active) {
+          setAssignment(nextAssignment);
+          setError(nextAssignment ? '' : 'No role assignment found for this player');
+        }
+      } catch (caught) {
+        if (active) {
+          setError(caught instanceof Error ? caught.message : 'Could not load your role');
+        }
+      }
+    };
+
+    void loadAssignment();
+
+    return () => {
+      active = false;
+    };
+  }, [room.id, session.playerId]);
+
+  const handleReset = async () => {
+    if (!isHost) {
+      return;
+    }
+
+    setIsResetting(true);
+    setError('');
+    try {
+      await resetGame(room.id, session.playerId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not reset game');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  return (
+    <section className="role-screen">
+      <div className="lobby-header">
+        <div>
+          <p className="eyebrow">My Role</p>
+          <h1>{room.roomCode}</h1>
+        </div>
+        {isHost ? (
+          <button className="secondary-button" disabled={isResetting} onClick={() => void handleReset()} type="button">
+            <RotateCcw size={18} />
+            {isResetting ? 'Resetting...' : 'Reset Game'}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="panel my-role-card">
+        {!assignment ? (
+          <p className="muted">{error || 'Loading your role...'}</p>
+        ) : !showRole ? (
+          <>
+            <p className="eyebrow">Private Card</p>
+            <h2>Role assigned</h2>
+            <p className="muted">Reveal only when your screen is private.</p>
+            <button onClick={() => setShowRole(true)} type="button">
+              <Eye size={18} />
+              Reveal My Role
+            </button>
+          </>
+        ) : role ? (
+          <>
+            <div className="role-card-header">
+              <div>
+                <span className="role-team">{role.team}</span>
+                <h2>{role.name}</h2>
+              </div>
+              <span className="role-quantity">{role.team}</span>
+            </div>
+            <p>{role.description}</p>
+            <div className="role-meta">
+              <span>Team: {role.team}</span>
+              <span>{role.category}</span>
+              <span>{role.difficulty}</span>
+            </div>
+            <button className="secondary-button" onClick={() => setShowRole(false)} type="button">
+              <EyeOff size={18} />
+              Hide Role
+            </button>
+          </>
+        ) : (
+          <p className="muted">Assigned role is not in the current catalog.</p>
+        )}
+      </div>
+
+      {error && assignment ? <div className="error-message">{error}</div> : null}
     </section>
   );
 }

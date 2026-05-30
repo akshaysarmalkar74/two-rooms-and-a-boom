@@ -176,11 +176,16 @@ input:focus {
   padding-top: 48px;
 }
 
-.role-selection {
+.role-selection,
+.role-screen {
   margin: 0 auto;
   max-width: 1120px;
   padding-top: 48px;
   width: 100%;
+}
+
+.role-screen {
+  max-width: 680px;
 }
 
 .lobby-header {
@@ -342,6 +347,16 @@ input:focus {
   gap: 14px;
   min-height: 248px;
   padding: 18px;
+}
+
+.my-role-card {
+  display: grid;
+  gap: 18px;
+}
+
+.my-role-card h2 {
+  font-size: 2rem;
+  margin-bottom: 0;
 }
 
 .role-card-header {
