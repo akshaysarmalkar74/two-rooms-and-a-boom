@@ -163,7 +163,7 @@ export const generateRandomDeck = (playerCount: number): RoleId[] => {
   ]);
 
   for (const pair of optionalPairs) {
-    if (deck.length + pair.length <= playerCount && Math.random() > 0.35) {
+    if (deck.length + pair.length <= playerCount && Math.random() > 0.5) {
       deck.push(...pair);
     }
   }
