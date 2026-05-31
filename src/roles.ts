@@ -178,6 +178,12 @@ export const generateRandomDeck = (playerCount: number): RoleId[] => {
   }
 
   const fillerRoles: RoleId[] = ['blue-civilian', 'red-civilian'];
+  const shouldIncludeVictim = playerCount - deck.length > 0 && Math.random() > 0.5;
+
+  if (shouldIncludeVictim) {
+    deck.push('victim');
+  }
+
   const shouldIncludeGambler = playerCount - deck.length > 0 && Math.random() > 0.5;
 
   if (shouldIncludeGambler) {
