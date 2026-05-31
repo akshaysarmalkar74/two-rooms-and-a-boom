@@ -100,6 +100,15 @@ export const roleCatalog = [
     description: 'Independent Grey Team role. Before Revealing Cards, choose one side which you think is going to win. If prediction is correct, you win else you lose.',
     difficulty: 'Expert',
   },
+  {
+    id: 'victim',
+    name: 'Victim',
+    team: 'Grey',
+    category: 'Independent',
+    pair: null,
+    description: 'Independent Grey Team role. You win if you are in the same room as the Bomber at the end of the game.',
+    difficulty: 'Expert',
+  }
 ] as const satisfies Role[];
 
 export const rolesById = new Map<RoleId, Role>(roleCatalog.map((role) => [role.id, role]));

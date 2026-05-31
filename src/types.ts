@@ -13,7 +13,8 @@ export type RoleId =
   | 'red-traitor'
   | 'blue-civilian'
   | 'red-civilian'
-  | 'gambler';
+  | 'gambler'
+  | 'victim';
 
 export type Role = {
   id: RoleId;
