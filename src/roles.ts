@@ -7,7 +7,7 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Core',
     pair: 'Bomber',
-    description: 'You are a primary character. Blue Team wins if you do not gain the "dead" condition.',
+    description: 'Avoid the Bomber. The Blue Team wins if you survive.',
     difficulty: 'Beginner',
   },
   {
@@ -16,7 +16,7 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Core',
     pair: 'President',
-    description: 'You are a primary character. Everyone in the same room as you at the end of the game gains the "dead" condition. The Red Team wins if the President gains the "dead" condition.',
+    description: 'Kill everyone in your room at the end of the game. The Red Team wins if the President dies.',
     difficulty: 'Beginner',
   },
   {
@@ -25,7 +25,7 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Support',
     pair: 'Remote Detonator',
-    description: 'If you card share with the Bomber, the game will end early. Everyone in the same room as the Bomber instantly gains the "dead" condition. Blue Team wins if the President survives.',
+    description: 'Card share with the Bomber to end the game early and force them to explode instantly.',
     difficulty: 'Expert',
   },
   {
@@ -34,7 +34,7 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Support',
     pair: 'Igniter',
-    description: 'If you card share with the President, the game will end early. Everyone in the same room as the Bomber instantly gains the "dead" condition. Red Team wins if the President gains the "dead" condition.',
+    description: 'Card share with the President to end the game early and force the Bomber to explode instantly.',
     difficulty: 'Expert',
   },
   {
@@ -43,7 +43,7 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Spy',
     pair: 'Red Spy',
-    description: 'This is a special character card that is the color of an opposing team. This means that the blue Spy has an allegiance to the Blue Team, but their card is red.',
+    description: 'You play for the Blue Team, but your card appears Red.',
     difficulty: 'Intermediate',
   },
   {
@@ -52,7 +52,7 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Spy',
     pair: 'Blue Spy',
-    description: 'This is a special character card that is the color of an opposing team. This means that the red Spy has an allegiance to the Red Team, but their card is blue.',
+    description: 'You play for the Red Team, but your card appears Blue.',
     difficulty: 'Intermediate',
   },
   {
@@ -61,7 +61,7 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Traitor',
     pair: 'Red Traitor',
-    description: 'You are a Traitor. You win if blue time looses. Make sure Bomber and President end in same room.',
+    description: 'You win if the Blue Team loses. Try to get the Bomber and President in the same room.',
     difficulty: 'Expert',
   },
   {
@@ -70,7 +70,7 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Traitor',
     pair: 'Blue Traitor',
-    description: 'You are a Traitor. You win if red time looses. Make sure Bomber and President don"t end in same room.',
+    description: 'You win if the Red Team loses. Try to keep the Bomber and President in different rooms.',
     difficulty: 'Expert',
   },
   {
@@ -79,7 +79,7 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Civilian',
     pair: null,
-    description: 'Basic Blue Team role.',
+    description: 'No special abilities. Help the Blue Team win.',
     difficulty: 'Beginner',
   },
   {
@@ -88,7 +88,7 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Civilian',
     pair: null,
-    description: 'Basic Red Team role.',
+    description: 'No special abilities. Help the Red Team win.',
     difficulty: 'Beginner',
   },
   {
@@ -97,7 +97,7 @@ export const roleCatalog = [
     team: 'Grey',
     category: 'Independent',
     pair: null,
-    description: 'Independent Grey Team role. Before Revealing Cards, choose one side which you think is going to win. If prediction is correct, you win else you lose.',
+    description: 'Before the final reveal, predict which team will win. You win if your guess is right.',
     difficulty: 'Expert',
   },
   {
@@ -106,7 +106,7 @@ export const roleCatalog = [
     team: 'Grey',
     category: 'Independent',
     pair: null,
-    description: 'Independent Grey Team role. You win if you are in the same room as the Bomber at the end of the game.',
+    description: 'You win if you end the game in the same room as the Bomber.',
     difficulty: 'Expert',
   }
 ] as const satisfies Role[];
