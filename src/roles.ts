@@ -108,6 +108,24 @@ export const roleCatalog = [
     pair: null,
     description: 'You win if you end the game in the same room as the Bomber.',
     difficulty: 'Expert',
+  },
+  {
+    id: 'red-conman',
+    name: 'Red Conman',
+    team: 'Red',
+    category: 'Conman',
+    pair: 'Conman',
+    description: 'When sharing your color or card, it only reveals "Conman". The player you share with must reveal their entire role to you. You win with Red Team Objective.',
+    difficulty: 'Intermediate',
+  },
+  {
+    id: 'blue-conman',
+    name: 'Blue Conman',
+    team: 'Blue',
+    category: 'Conman',
+    pair: 'Conman',
+    description: 'When sharing your color or card, it only reveals "Conman". The player you share with must reveal their entire role to you. You win with Blue Team Objective.',
+    difficulty: 'Intermediate',
   }
 ] as const satisfies Role[];
 

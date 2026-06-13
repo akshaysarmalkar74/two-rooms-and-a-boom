@@ -1,7 +1,7 @@
 export type RoomStatus = 'LOBBY' | 'ROLE_SELECTION' | 'ROLE_ASSIGNED';
 export type Team = 'Blue' | 'Red' | 'Grey';
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Expert';
-export type RoleCategory = 'Core' | 'Support' | 'Spy' | 'Traitor' | 'Civilian' | 'Independent';
+export type RoleCategory = 'Core' | 'Support' | 'Spy' | 'Traitor' | 'Civilian' | 'Independent' | 'Conman';
 export type RoleId =
   | 'president'
   | 'bomber'
@@ -14,7 +14,9 @@ export type RoleId =
   | 'blue-civilian'
   | 'red-civilian'
   | 'gambler'
-  | 'victim';
+  | 'victim'
+  | 'red-conman'
+  | 'blue-conman';
 
 export type Role = {
   id: RoleId;

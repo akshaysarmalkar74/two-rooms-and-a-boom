@@ -749,6 +749,21 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
 }
 
 function SharePanel({ onStopSharing, role, shareView }: { onStopSharing: () => void; role: Role; shareView: 'team' | 'card' }) {
+  if (role.id === 'red-conman' || role.id === 'blue-conman') {
+    return (
+      <div className="share-panel team-grey">
+        <div className="conman-other-player">
+          <p className="eyebrow">Share Result</p>
+          <h2>Conman</h2>
+          <p>You have encountered the Conman! You must now reveal your ENTIRE role card to them.</p>
+        </div>
+        <button className="secondary-button" onClick={onStopSharing} type="button">
+          Stop Sharing
+        </button>
+      </div>
+    );
+  }
+
   const isTeamOnly = shareView === 'team';
 
   return (
