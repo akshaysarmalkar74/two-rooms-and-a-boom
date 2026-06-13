@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { BondsMode, Player, RoleAssignment, RoleId, Room, RoomStatus, Session } from './types';
+import type { BondsMode, BuryMode, Player, RoleAssignment, RoleId, Room, RoomStatus, Session } from './types';
 
 const MAX_PLAYERS = 20;
 const ROOM_CODE_LENGTH = 4;
@@ -13,6 +13,7 @@ type RoomRow = {
   status: Room['status'];
   selected_role_ids: RoleId[] | null;
   bonds_mode: BondsMode | null;
+  bury_mode: BuryMode | null;
 };
 
 type PlayerRow = {
@@ -39,6 +40,7 @@ const toRoom = (row: RoomRow): Room => ({
   status: row.status,
   selectedRoleIds: row.selected_role_ids ?? [],
   bondsMode: row.bonds_mode ?? 'off',
+  buryMode: row.bury_mode ?? 'off',
 });
 
 const toPlayer = (row: PlayerRow): Player => ({
@@ -109,7 +111,7 @@ export const createRoom = async (name: string): Promise<Session> => {
     const { data: room, error: roomError } = await client
       .from('rooms')
       .insert({ room_code: roomCode, status: 'LOBBY' })
-      .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode')
+      .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode, bury_mode')
       .single<RoomRow>();
 
     if (roomError) {
@@ -159,7 +161,7 @@ export const joinRoom = async (name: string, roomCodeInput: string): Promise<Ses
 
   const { data: roomRow, error: roomError } = await client
     .from('rooms')
-    .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode')
+    .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode, bury_mode')
     .eq('room_code', roomCode)
     .maybeSingle<RoomRow>();
 
@@ -199,7 +201,7 @@ export const getRoom = async (roomId: string): Promise<Room | null> => {
   const client = requireClient();
   const { data, error } = await client
     .from('rooms')
-    .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode')
+    .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode, bury_mode')
     .eq('id', roomId)
     .maybeSingle<RoomRow>();
 
@@ -254,6 +256,19 @@ export const updateBondsMode = async (roomId: string, bondsMode: BondsMode) => {
   const { error } = await client
     .from('rooms')
     .update({ bonds_mode: bondsMode })
+    .eq('id', roomId)
+    .in('status', ['LOBBY', 'ROLE_SELECTION']);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const updateBuryMode = async (roomId: string, buryMode: BuryMode) => {
+  const client = requireClient();
+  const { error } = await client
+    .from('rooms')
+    .update({ bury_mode: buryMode })
     .eq('id', roomId)
     .in('status', ['LOBBY', 'ROLE_SELECTION']);
 

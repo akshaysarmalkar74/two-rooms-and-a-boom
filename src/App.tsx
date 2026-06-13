@@ -1,9 +1,9 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { clearSession, createRoom, getMyAssignment, getPlayers, getRoom, joinRoom, leaveRoom, loadSession, maxPlayers, resetGame, saveSession, startGame, updateBondsMode, updateRoomStatus, updateSelectedRoleIds, validateName } from './roomService';
+import { clearSession, createRoom, getMyAssignment, getPlayers, getRoom, joinRoom, leaveRoom, loadSession, maxPlayers, resetGame, saveSession, startGame, updateBondsMode, updateBuryMode, updateRoomStatus, updateSelectedRoleIds, validateName } from './roomService';
 import { generateRandomDeck, getDeckStatus, getPairedRoleId, getRoleCounts, getRoleQuantity, pairedRoleIds, roleCatalog, rolesById } from './roles';
 import { isSupabaseConfigured, supabase } from './supabase';
-import type { BondsMode, Player, Role, RoleAssignment, RoleId, Room, Session, Team } from './types';
+import type { BondsMode, BuryMode, Player, Role, RoleAssignment, RoleId, Room, Session, Team } from './types';
 
 type Icons = {
   ArrowLeft: LucideIcon;
@@ -203,6 +203,9 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
   const selectedRoleIds = room?.selectedRoleIds ?? [];
   const teamCounts = useMemo(() => getRoleCounts(selectedRoleIds), [selectedRoleIds]);
   const deckStatus = getDeckStatus(selectedRoleIds.length, connectedPlayers.length);
+  const buryWillActivate = !!room && (room.buryMode === 'on' || (room.buryMode === 'random' && selectedRoleIds.length === connectedPlayers.length + 2));
+  const buryRequirementsMet = !buryWillActivate || (selectedRoleIds.includes('princess') && selectedRoleIds.includes('killer'));
+  const canStartGame = buryRequirementsMet && (deckStatus === 'Ready' || buryWillActivate);
 
   useEffect(() => {
     let active = true;
@@ -317,7 +320,7 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
       return;
     }
 
-    if (deckStatus !== 'Ready') {
+    if (!canStartGame) {
       setError('Selected cards count must match player count');
       return;
     }
@@ -371,7 +374,7 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
             Role Selection
           </button>
           {isHost ? (
-            <button className="primary-outline-button" disabled={isStarting || deckStatus !== 'Ready'} onClick={() => void handleStartGame()} type="button">
+            <button className="primary-outline-button" disabled={isStarting || !canStartGame} onClick={() => void handleStartGame()} type="button">
               <Play size={18} />
               {isStarting ? 'Starting...' : 'Start Game'}
             </button>
@@ -382,13 +385,15 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
         </div>
       </div>
 
+      {error ? <div className="error-message">{error}</div> : null}
+
       <div className="deck-summary-grid">
         <SummaryTile label="Players" value={connectedPlayers.length.toString()} />
         <SummaryTile label="Selected Cards" value={selectedRoleIds.length.toString()} />
         <SummaryTile label="Blue" value={teamCounts.Blue.toString()} team="Blue" />
         <SummaryTile label="Red" value={teamCounts.Red.toString()} team="Red" />
         <SummaryTile label="Grey" value={teamCounts.Grey.toString()} team="Grey" />
-        <SummaryTile label="Deck Status" value={deckStatus} tone={deckStatus === 'Ready' ? 'ready' : 'warning'} />
+        <SummaryTile label="Deck Status" value={canStartGame ? 'Ready' : deckStatus} tone={canStartGame ? 'ready' : 'warning'} />
       </div>
 
       <div className="panel player-panel">
@@ -415,7 +420,6 @@ function Lobby({ icons, session, onExit }: { icons: Icons; session: Session; onE
         </ol>
       </div>
 
-      {error ? <div className="error-message">{error}</div> : null}
     </section>
   );
 }
@@ -451,6 +455,9 @@ function RoleSelection({
   const selectedRoleIds = room.selectedRoleIds;
   const teamCounts = getRoleCounts(selectedRoleIds);
   const deckStatus = getDeckStatus(selectedRoleIds.length, connectedPlayerCount);
+  const buryWillActivate = room.buryMode === 'on' || (room.buryMode === 'random' && selectedRoleIds.length === connectedPlayerCount + 2);
+  const buryRequirementsMet = !buryWillActivate || (selectedRoleIds.includes('princess') && selectedRoleIds.includes('killer'));
+  const canStartGame = buryRequirementsMet && (deckStatus === 'Ready' || buryWillActivate);
 
   const persistDeck = async (nextSelectedRoleIds: RoleId[]) => {
     setError('');
@@ -515,7 +522,7 @@ function RoleSelection({
       return;
     }
 
-    const nextDeck = generateRandomDeck(connectedPlayerCount);
+    const nextDeck = generateRandomDeck(connectedPlayerCount, room.buryMode);
     if (nextDeck.length === 0) {
       setError('At least 2 players are required for a random deck');
       return;
@@ -529,7 +536,7 @@ function RoleSelection({
       return;
     }
 
-    if (deckStatus !== 'Ready') {
+    if (!canStartGame) {
       setError('Selected cards count must match player count');
       return;
     }
@@ -561,6 +568,22 @@ function RoleSelection({
     }
   };
 
+  const handleBuryModeChange = async (mode: BuryMode) => {
+    if (!isHost) {
+      return;
+    }
+
+    setError('');
+    setIsSaving(true);
+    try {
+      await updateBuryMode(room.id, mode);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not update bury setting');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <section className="role-selection">
       <div className="lobby-header">
@@ -580,7 +603,7 @@ function RoleSelection({
             </button>
           ) : null}
           {isHost ? (
-            <button className="primary-outline-button" disabled={isStarting || deckStatus !== 'Ready'} onClick={() => void handleStartGame()} type="button">
+            <button className="primary-outline-button" disabled={isStarting || !canStartGame} onClick={() => void handleStartGame()} type="button">
               <Play size={18} />
               {isStarting ? 'Starting...' : 'Start Game'}
             </button>
@@ -592,13 +615,18 @@ function RoleSelection({
         </div>
       </div>
 
+      {error ? <div className="error-message">{error}</div> : null}
+      {buryWillActivate && (!selectedRoleIds.includes('princess') || !selectedRoleIds.includes('killer')) ? (
+        <div className="error-message">Bury is active — Princess and Killer must be in the deck as the alternate main characters.</div>
+      ) : null}
+
       <div className="deck-summary-grid">
         <SummaryTile label="Players" value={connectedPlayerCount.toString()} />
         <SummaryTile label="Selected Cards" value={selectedRoleIds.length.toString()} />
         <SummaryTile label="Blue" value={teamCounts.Blue.toString()} team="Blue" />
         <SummaryTile label="Red" value={teamCounts.Red.toString()} team="Red" />
         <SummaryTile label="Grey" value={teamCounts.Grey.toString()} team="Grey" />
-        <SummaryTile label="Deck Status" value={deckStatus} tone={deckStatus === 'Ready' ? 'ready' : 'warning'} />
+        <SummaryTile label="Deck Status" value={canStartGame ? 'Ready' : deckStatus} tone={canStartGame ? 'ready' : 'warning'} />
       </div>
 
       <div className="panel bonds-panel">
@@ -645,6 +673,51 @@ function RoleSelection({
         ) : null}
       </div>
 
+      <div className="panel bury-panel">
+        <div className="bury-panel-header">
+          <div>
+            <p className="eyebrow">Optional Rule</p>
+            <h2>Bury Cards</h2>
+          </div>
+          <span className={`bury-mode-badge bury-mode-${room.buryMode}`}>
+            {room.buryMode === 'off' ? 'Off' : room.buryMode === 'on' ? 'On' : 'Random (50%)'}
+          </span>
+        </div>
+        <p className="muted">
+          When on, President and Bomber are buried — set aside and not assigned to any player. Add Princess and Killer as the alternate main characters.
+          Build your deck with 2 more cards than players (the extras being President and Bomber).
+          {room.buryMode === 'random' ? ' In Random mode, Generate Random Deck has a 50% chance of creating a bury deck (N+2 cards) or a normal deck (N cards).' : ''}
+        </p>
+        {isHost ? (
+          <div className="bury-mode-buttons">
+            <button
+              className={room.buryMode === 'off' ? 'primary-outline-button' : 'secondary-button'}
+              disabled={isSaving}
+              onClick={() => void handleBuryModeChange('off')}
+              type="button"
+            >
+              Off
+            </button>
+            <button
+              className={room.buryMode === 'on' ? 'primary-outline-button' : 'secondary-button'}
+              disabled={isSaving}
+              onClick={() => void handleBuryModeChange('on')}
+              type="button"
+            >
+              On
+            </button>
+            <button
+              className={room.buryMode === 'random' ? 'primary-outline-button' : 'secondary-button'}
+              disabled={isSaving}
+              onClick={() => void handleBuryModeChange('random')}
+              type="button"
+            >
+              Random (50%)
+            </button>
+          </div>
+        ) : null}
+      </div>
+
       {!isHost ? <p className="viewer-note">Only the host can modify the deck. Updates appear here in real time.</p> : null}
 
       <div className="role-grid">
@@ -684,7 +757,6 @@ function RoleSelection({
         })}
       </div>
 
-      {error ? <div className="error-message">{error}</div> : null}
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import type { Role, RoleId } from './types';
+import type { BuryMode, Role, RoleId } from './types';
 
 export const roleCatalog = [
   {
@@ -126,7 +126,25 @@ export const roleCatalog = [
     pair: 'Conman',
     description: 'When sharing your color or card, it only reveals "Conman". The player you share with must reveal their entire role to you. You win with Blue Team Objective.',
     difficulty: 'Intermediate',
-  }
+  },
+  {
+    id: 'princess',
+    name: 'Princess',
+    team: 'Blue',
+    category: 'Core',
+    pair: 'Killer',
+    description: 'Alternate Blue Team leader. If the President is buried, you become the primary character — Blue Team wins if you survive.',
+    difficulty: 'Beginner',
+  },
+  {
+    id: 'killer',
+    name: 'Killer',
+    team: 'Red',
+    category: 'Core',
+    pair: 'Princess',
+    description: 'Alternate Red Team threat. If the Bomber is buried, you become the primary character. Everyone in your room at game end gains the "dead" condition. Red Team wins if the Princess is caught.',
+    difficulty: 'Beginner',
+  },
 ] as const satisfies Role[];
 
 export const rolesById = new Map<RoleId, Role>(roleCatalog.map((role) => [role.id, role]));
@@ -177,44 +195,58 @@ const shuffle = <Value,>(values: Value[]) => {
   return copy;
 };
 
-export const generateRandomDeck = (playerCount: number): RoleId[] => {
+export const generateRandomDeck = (playerCount: number, buryMode: BuryMode = 'off'): RoleId[] => {
   if (playerCount < 2) {
     return [];
   }
 
-  const deck: RoleId[] = ['president', 'bomber'];
-  const optionalPairs: RoleId[][] = shuffle([
+  const buryActive = buryMode === 'on' || (buryMode === 'random' && Math.random() > 0.5);
+
+  // playerDeck holds the roles that will actually be assigned to players (always playerCount slots).
+  // When bury is active, president+bomber are appended separately as the 2 buried extras.
+  const playerDeck: RoleId[] = buryActive
+    ? ['princess', 'killer']   // alternate main characters — mandatory when burying
+    : ['president', 'bomber'];  // standard main characters — mandatory in normal games
+
+  // Optional paired roles — added together or not at all.
+  // Princess/Killer are included as a random pair only when bury is NOT active
+  // (when bury is active they are already mandatory above).
+  const optionalPairs: Array<[RoleId, RoleId]> = shuffle([
     ['blue-spy', 'red-spy'],
     ['blue-traitor', 'red-traitor'],
     ['igniter', 'remote-detonator'],
+    ['blue-conman', 'red-conman'],
+    ...(!buryActive ? [['princess', 'killer'] as [RoleId, RoleId]] : []),
   ]);
 
   for (const pair of optionalPairs) {
-    if (deck.length + pair.length <= playerCount && Math.random() > 0.5) {
-      deck.push(...pair);
+    if (playerDeck.length + pair.length <= playerCount && Math.random() > 0.5) {
+      playerDeck.push(...pair);
     }
   }
 
+  // Optional single roles
+  if (playerCount - playerDeck.length > 0 && Math.random() > 0.5) {
+    playerDeck.push('victim');
+  }
+
+  if (playerCount - playerDeck.length > 0 && Math.random() > 0.5) {
+    playerDeck.push('gambler');
+  }
+
+  // Fill remaining slots with civilians, balancing Blue vs Red
   const fillerRoles: RoleId[] = ['blue-civilian', 'red-civilian'];
-  const shouldIncludeVictim = playerCount - deck.length > 0 && Math.random() > 0.5;
-
-  if (shouldIncludeVictim) {
-    deck.push('victim');
-  }
-
-  const shouldIncludeGambler = playerCount - deck.length > 0 && Math.random() > 0.5;
-
-  if (shouldIncludeGambler) {
-    deck.push('gambler');
-  }
-
-  while (deck.length < playerCount) {
-    const blueCount = getRoleCounts(deck).Blue;
-    const redCount = getRoleCounts(deck).Red;
+  while (playerDeck.length < playerCount) {
+    const { Blue: blueCount, Red: redCount } = getRoleCounts(playerDeck);
     const nextCivilian = blueCount <= redCount ? 'blue-civilian' : 'red-civilian';
     const alternateCivilian = fillerRoles[Math.floor(Math.random() * fillerRoles.length)];
-    deck.push(Math.random() > 0.25 ? nextCivilian : alternateCivilian);
+    playerDeck.push(Math.random() > 0.25 ? nextCivilian : alternateCivilian);
   }
 
-  return shuffle(deck);
+  // Append the buried extras at the end; the SQL will filter them out of assignment
+  if (buryActive) {
+    playerDeck.push('president', 'bomber');
+  }
+
+  return shuffle(playerDeck);
 };

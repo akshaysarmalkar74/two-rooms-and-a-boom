@@ -3,6 +3,7 @@ export type Team = 'Blue' | 'Red' | 'Grey';
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Expert';
 export type RoleCategory = 'Core' | 'Support' | 'Spy' | 'Traitor' | 'Civilian' | 'Independent' | 'Conman';
 export type BondsMode = 'off' | 'on' | 'random';
+export type BuryMode = 'off' | 'on' | 'random';
 export type RoleId =
   | 'president'
   | 'bomber'
@@ -17,7 +18,9 @@ export type RoleId =
   | 'gambler'
   | 'victim'
   | 'red-conman'
-  | 'blue-conman';
+  | 'blue-conman'
+  | 'princess'
+  | 'killer';
 
 export type Role = {
   id: RoleId;
@@ -37,6 +40,7 @@ export type Room = {
   status: RoomStatus;
   selectedRoleIds: RoleId[];
   bondsMode: BondsMode;
+  buryMode: BuryMode;
 };
 
 export type Player = {
