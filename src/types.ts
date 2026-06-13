@@ -2,6 +2,7 @@ export type RoomStatus = 'LOBBY' | 'ROLE_SELECTION' | 'ROLE_ASSIGNED';
 export type Team = 'Blue' | 'Red' | 'Grey';
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Expert';
 export type RoleCategory = 'Core' | 'Support' | 'Spy' | 'Traitor' | 'Civilian' | 'Independent' | 'Conman';
+export type BondsMode = 'off' | 'on' | 'random';
 export type RoleId =
   | 'president'
   | 'bomber'
@@ -35,6 +36,7 @@ export type Room = {
   hostPlayerId: string | null;
   status: RoomStatus;
   selectedRoleIds: RoleId[];
+  bondsMode: BondsMode;
 };
 
 export type Player = {
@@ -56,4 +58,5 @@ export type RoleAssignment = {
   playerId: string;
   roleId: RoleId;
   assignedAt: string;
+  bondedPartnerName: string | null;
 };

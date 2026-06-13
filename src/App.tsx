@@ -1,9 +1,9 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { clearSession, createRoom, getMyAssignment, getPlayers, getRoom, joinRoom, leaveRoom, loadSession, maxPlayers, resetGame, saveSession, startGame, updateRoomStatus, updateSelectedRoleIds, validateName } from './roomService';
+import { clearSession, createRoom, getMyAssignment, getPlayers, getRoom, joinRoom, leaveRoom, loadSession, maxPlayers, resetGame, saveSession, startGame, updateBondsMode, updateRoomStatus, updateSelectedRoleIds, validateName } from './roomService';
 import { generateRandomDeck, getDeckStatus, getPairedRoleId, getRoleCounts, getRoleQuantity, pairedRoleIds, roleCatalog, rolesById } from './roles';
 import { isSupabaseConfigured, supabase } from './supabase';
-import type { Player, Role, RoleAssignment, RoleId, Room, Session, Team } from './types';
+import type { BondsMode, Player, Role, RoleAssignment, RoleId, Room, Session, Team } from './types';
 
 type Icons = {
   ArrowLeft: LucideIcon;
@@ -545,6 +545,22 @@ function RoleSelection({
     }
   };
 
+  const handleBondsModeChange = async (mode: BondsMode) => {
+    if (!isHost) {
+      return;
+    }
+
+    setError('');
+    setIsSaving(true);
+    try {
+      await updateBondsMode(room.id, mode);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not update companions setting');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <section className="role-selection">
       <div className="lobby-header">
@@ -583,6 +599,50 @@ function RoleSelection({
         <SummaryTile label="Red" value={teamCounts.Red.toString()} team="Red" />
         <SummaryTile label="Grey" value={teamCounts.Grey.toString()} team="Grey" />
         <SummaryTile label="Deck Status" value={deckStatus} tone={deckStatus === 'Ready' ? 'ready' : 'warning'} />
+      </div>
+
+      <div className="panel bonds-panel">
+        <div className="bonds-panel-header">
+          <div>
+            <p className="eyebrow">Optional Rule</p>
+            <h2>Companions</h2>
+          </div>
+          <span className={`bonds-mode-badge bonds-mode-${room.bondsMode}`}>
+            {room.bondsMode === 'off' ? 'Off' : room.bondsMode === 'on' ? 'On' : 'Random (50%)'}
+          </span>
+        </div>
+        <p className="muted">Two randomly chosen players will be secretly bonded. Their only objective becomes ending the game in the same room — their team goal no longer applies. Not revealed during shares. Requires at least 6 players.</p>
+        {isHost ? (
+          <div className="bonds-mode-buttons">
+            <button
+              className={room.bondsMode === 'off' ? 'primary-outline-button' : 'secondary-button'}
+              disabled={isSaving}
+              onClick={() => void handleBondsModeChange('off')}
+              type="button"
+            >
+              Off
+            </button>
+            <button
+              className={room.bondsMode === 'on' ? 'primary-outline-button' : 'secondary-button'}
+              disabled={isSaving || connectedPlayerCount < 6}
+              onClick={() => void handleBondsModeChange('on')}
+              type="button"
+            >
+              On
+            </button>
+            <button
+              className={room.bondsMode === 'random' ? 'primary-outline-button' : 'secondary-button'}
+              disabled={isSaving || connectedPlayerCount < 6}
+              onClick={() => void handleBondsModeChange('random')}
+              type="button"
+            >
+              Random (50%)
+            </button>
+          </div>
+        ) : null}
+        {connectedPlayerCount < 6 && room.bondsMode !== 'off' ? (
+          <p className="muted">Companions will be disabled at game start — need at least 6 players.</p>
+        ) : null}
       </div>
 
       {!isHost ? <p className="viewer-note">Only the host can modify the deck. Updates appear here in real time.</p> : null}
@@ -723,6 +783,13 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
               <span>{role.category}</span>
               <span>{role.difficulty}</span>
             </div>
+            {assignment.bondedPartnerName ? (
+              <div className="bond-info">
+                <p className="eyebrow">Companions</p>
+                <h3>Bonded with {assignment.bondedPartnerName}</h3>
+                <p className="muted">Your only objective is to end the game in the same room as your companion. Your team's original objective no longer applies to you.</p>
+              </div>
+            ) : null}
             <div className="share-actions">
               <button className="secondary-button" onClick={() => setShareView('team')} type="button">
                 <Eye size={18} />

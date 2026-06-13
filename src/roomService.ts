@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Player, RoleAssignment, RoleId, Room, RoomStatus, Session } from './types';
+import type { BondsMode, Player, RoleAssignment, RoleId, Room, RoomStatus, Session } from './types';
 
 const MAX_PLAYERS = 20;
 const ROOM_CODE_LENGTH = 4;
@@ -12,6 +12,7 @@ type RoomRow = {
   host_player_id: string | null;
   status: Room['status'];
   selected_role_ids: RoleId[] | null;
+  bonds_mode: BondsMode | null;
 };
 
 type PlayerRow = {
@@ -37,6 +38,7 @@ const toRoom = (row: RoomRow): Room => ({
   hostPlayerId: row.host_player_id,
   status: row.status,
   selectedRoleIds: row.selected_role_ids ?? [],
+  bondsMode: row.bonds_mode ?? 'off',
 });
 
 const toPlayer = (row: PlayerRow): Player => ({
@@ -107,7 +109,7 @@ export const createRoom = async (name: string): Promise<Session> => {
     const { data: room, error: roomError } = await client
       .from('rooms')
       .insert({ room_code: roomCode, status: 'LOBBY' })
-      .select('id, room_code, created_at, host_player_id, status, selected_role_ids')
+      .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode')
       .single<RoomRow>();
 
     if (roomError) {
@@ -157,7 +159,7 @@ export const joinRoom = async (name: string, roomCodeInput: string): Promise<Ses
 
   const { data: roomRow, error: roomError } = await client
     .from('rooms')
-    .select('id, room_code, created_at, host_player_id, status, selected_role_ids')
+    .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode')
     .eq('room_code', roomCode)
     .maybeSingle<RoomRow>();
 
@@ -197,7 +199,7 @@ export const getRoom = async (roomId: string): Promise<Room | null> => {
   const client = requireClient();
   const { data, error } = await client
     .from('rooms')
-    .select('id, room_code, created_at, host_player_id, status, selected_role_ids')
+    .select('id, room_code, created_at, host_player_id, status, selected_role_ids, bonds_mode')
     .eq('id', roomId)
     .maybeSingle<RoomRow>();
 
@@ -239,6 +241,19 @@ export const updateSelectedRoleIds = async (roomId: string, selectedRoleIds: Rol
   const { error } = await client
     .from('rooms')
     .update({ selected_role_ids: selectedRoleIds })
+    .eq('id', roomId)
+    .in('status', ['LOBBY', 'ROLE_SELECTION']);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const updateBondsMode = async (roomId: string, bondsMode: BondsMode) => {
+  const client = requireClient();
+  const { error } = await client
+    .from('rooms')
+    .update({ bonds_mode: bondsMode })
     .eq('id', roomId)
     .in('status', ['LOBBY', 'ROLE_SELECTION']);
 
@@ -303,6 +318,7 @@ export const getMyAssignment = async (session: Session): Promise<RoleAssignment 
     playerId: assignment.player_id,
     roleId: assignment.role_id as RoleId,
     assignedAt: assignment.assigned_at,
+    bondedPartnerName: (assignment.bonded_partner_name as string | null) ?? null,
   };
 };
 
