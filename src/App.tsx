@@ -736,7 +736,7 @@ function RoleSelection({
                   <span className="role-team">{role.team}</span>
                   <h2>{role.name}</h2>
                 </div>
-                <span className="role-quantity">{quantity}</span>
+                <span className="role-quantity" data-count={quantity}>{quantity}</span>
               </div>
               <p>{role.description}</p>
               <div className="role-meta">
@@ -825,7 +825,7 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
         ) : null}
       </div>
 
-      <div className="panel my-role-card">
+      <div className={`panel my-role-card ${role && showRole && !shareView ? `team-${role.team.toLowerCase()}` : ''}`}>
         {!assignment ? (
           <p className="muted">{error || 'Loading your role...'}</p>
         ) : !showRole ? (
@@ -842,16 +842,16 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
           <SharePanel role={role} shareView={shareView} onStopSharing={() => setShareView(null)} />
         ) : role ? (
           <>
-            <div className="role-card-header">
-              <div>
-                <span className="role-team">{role.team}</span>
-                <h2>{role.name}</h2>
+            <div className="my-role-header">
+              <span className="role-team">{role.team} Team</span>
+              <h2 className="my-role-name">{role.name}</h2>
+              <div className={`win-condition win-condition-${role.team.toLowerCase()}`}>
+                <span className="win-condition-label">Win If</span>
+                {role.winCondition}
               </div>
-              <span className="role-quantity">{role.team}</span>
             </div>
             <p>{role.description}</p>
             <div className="role-meta">
-              <span>Team: {role.team}</span>
               <span>{role.category}</span>
               <span>{role.difficulty}</span>
             </div>
@@ -859,7 +859,7 @@ function MyRoleScreen({ icons, isHost, room, session }: { icons: Icons; isHost: 
               <div className="bond-info">
                 <p className="eyebrow">Companions</p>
                 <h3>Bonded with {assignment.bondedPartnerName}</h3>
-                <p className="muted">Your only objective is to end the game in the same room as your companion. Your team's original objective no longer applies to you.</p>
+                <p className="muted">Your only objective is to end the game in the same room as your companion. Your team goal no longer applies.</p>
               </div>
             ) : null}
             <div className="share-actions">

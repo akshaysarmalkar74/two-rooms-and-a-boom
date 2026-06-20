@@ -29,6 +29,7 @@ export type Role = {
   category: RoleCategory;
   pair: string | null;
   description: string;
+  winCondition: string;
   difficulty: Difficulty;
 };
 

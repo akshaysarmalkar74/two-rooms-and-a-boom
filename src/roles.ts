@@ -7,7 +7,8 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Core',
     pair: 'Bomber',
-    description: 'Avoid the Bomber. The Blue Team wins if you survive.',
+    description: 'Stay alive. Blue Team wins if you survive to the end.',
+    winCondition: 'Survive to the end',
     difficulty: 'Beginner',
   },
   {
@@ -16,7 +17,8 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Core',
     pair: 'President',
-    description: 'Kill everyone in your room at the end of the game. The Red Team wins if the President dies.',
+    description: 'Kill everyone in your room at game end. Red wins if the President dies.',
+    winCondition: 'Kill everyone in your room',
     difficulty: 'Beginner',
   },
   {
@@ -25,7 +27,8 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Support',
     pair: 'Remote Detonator',
-    description: 'Card share with the Bomber to end the game early and force them to explode instantly.',
+    description: 'Card share with the Bomber to trigger an immediate explosion.',
+    winCondition: 'Trigger early explosion',
     difficulty: 'Expert',
   },
   {
@@ -34,7 +37,8 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Support',
     pair: 'Igniter',
-    description: 'Card share with the President to end the game early and force the Bomber to explode instantly.',
+    description: 'Card share with the President to trigger an immediate explosion.',
+    winCondition: 'Trigger early explosion',
     difficulty: 'Expert',
   },
   {
@@ -43,7 +47,8 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Spy',
     pair: 'Red Spy',
-    description: 'You play for the Blue Team, but your card appears Red.',
+    description: 'You play for Blue, but your card shows Red.',
+    winCondition: 'Blue Team wins',
     difficulty: 'Intermediate',
   },
   {
@@ -52,7 +57,8 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Spy',
     pair: 'Blue Spy',
-    description: 'You play for the Red Team, but your card appears Blue.',
+    description: 'You play for Red, but your card shows Blue.',
+    winCondition: 'Red Team wins',
     difficulty: 'Intermediate',
   },
   {
@@ -61,7 +67,8 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Traitor',
     pair: 'Red Traitor',
-    description: 'You win if the Blue Team loses. Try to get the Bomber and President in the same room.',
+    description: 'You win if Blue loses. Sabotage your own team.',
+    winCondition: 'Blue Team must lose',
     difficulty: 'Expert',
   },
   {
@@ -70,7 +77,8 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Traitor',
     pair: 'Blue Traitor',
-    description: 'You win if the Red Team loses. Try to keep the Bomber and President in different rooms.',
+    description: 'You win if Red loses. Sabotage your own team.',
+    winCondition: 'Red Team must lose',
     difficulty: 'Expert',
   },
   {
@@ -79,7 +87,8 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Civilian',
     pair: null,
-    description: 'No special abilities. Help the Blue Team win.',
+    description: 'No special abilities. Help Blue Team win.',
+    winCondition: 'Blue Team wins',
     difficulty: 'Beginner',
   },
   {
@@ -88,7 +97,8 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Civilian',
     pair: null,
-    description: 'No special abilities. Help the Red Team win.',
+    description: 'No special abilities. Help Red Team win.',
+    winCondition: 'Red Team wins',
     difficulty: 'Beginner',
   },
   {
@@ -97,7 +107,8 @@ export const roleCatalog = [
     team: 'Grey',
     category: 'Independent',
     pair: null,
-    description: 'Before the final reveal, predict which team will win. You win if your guess is right.',
+    description: 'Predict the winning team before the final reveal.',
+    winCondition: 'Correctly predict the winner',
     difficulty: 'Expert',
   },
   {
@@ -106,7 +117,8 @@ export const roleCatalog = [
     team: 'Grey',
     category: 'Independent',
     pair: null,
-    description: 'You win if you end the game in the same room as the Bomber.',
+    description: 'Win by ending the game in the same room as the Bomber.',
+    winCondition: 'End in the Bomber\'s room',
     difficulty: 'Expert',
   },
   {
@@ -114,8 +126,9 @@ export const roleCatalog = [
     name: 'Red Conman',
     team: 'Red',
     category: 'Conman',
-    pair: 'Conman',
-    description: 'When sharing your color or card, it only reveals "Conman". The player you share with must reveal their entire role to you. You win with Red Team Objective.',
+    pair: 'Blue Conman',
+    description: 'You only ever reveal "Conman" when sharing — they must show you their full card in return.',
+    winCondition: 'Red Team wins',
     difficulty: 'Intermediate',
   },
   {
@@ -123,8 +136,9 @@ export const roleCatalog = [
     name: 'Blue Conman',
     team: 'Blue',
     category: 'Conman',
-    pair: 'Conman',
-    description: 'When sharing your color or card, it only reveals "Conman". The player you share with must reveal their entire role to you. You win with Blue Team Objective.',
+    pair: 'Red Conman',
+    description: 'You only ever reveal "Conman" when sharing — they must show you their full card in return.',
+    winCondition: 'Blue Team wins',
     difficulty: 'Intermediate',
   },
   {
@@ -133,7 +147,8 @@ export const roleCatalog = [
     team: 'Blue',
     category: 'Core',
     pair: 'Killer',
-    description: 'Alternate Blue Team leader. If the President is buried, you become the primary character — Blue Team wins if you survive.',
+    description: 'Alternate Blue leader when President is buried. Blue wins if you survive.',
+    winCondition: 'Survive to the end',
     difficulty: 'Beginner',
   },
   {
@@ -142,7 +157,8 @@ export const roleCatalog = [
     team: 'Red',
     category: 'Core',
     pair: 'Princess',
-    description: 'Alternate Red Team threat. If the Bomber is buried, you become the primary character. Everyone in your room at game end gains the "dead" condition. Red Team wins if the Princess is caught.',
+    description: 'Alternate Red threat when Bomber is buried. Kills everyone in your room at game end.',
+    winCondition: 'Kill everyone in your room',
     difficulty: 'Beginner',
   },
 ] as const satisfies Role[];
